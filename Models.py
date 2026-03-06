@@ -5,6 +5,8 @@ import sklearn as skl
 import SmartContainer.Feature_Engineer as fe
 from sklearn.model_selection import train_test_split, StratifiedKFold
 from sklearn.metrics import classification_report, confusion_matrix, accuracy_score
+from sklearn.ensemble import IsolationForest
+from sklearn.preprocessing import StandardScaler
 
 class Model:
     def __init__(self, model = None):
@@ -17,6 +19,7 @@ class Model:
                 eval_metric='logloss')
         else:
             self.model = model
+        self.isolator = IsolationForest(n_estimators=200,contamination=0.05,random_state=42)
     
     def train_model(self, X, y, test_size = 0.2, stratify = True):
         if stratify:
@@ -47,6 +50,13 @@ class Model:
         probs = self.model.predict_proba(X)
         scores = np.matmul(probs, np.unique(y_pred)) / (min(np.unique(y_pred)) + max(np.unique(y_pred)))
         return y_pred, probs, scores
+    
+    def anomaly_detection(self, X):
+        scaler = StandardScaler()
+        X_scaled = scaler.fit_transform(X)
+        anomaly_score= -self.isolator.fit(X_scaled).score_samples(X_scaled)
+        anomaly_score = (anomaly_score - np.min(anomaly_score))/(np.max(anomaly_score) - np.min(anomaly_score))
+        return anomaly_score
 
     def new_model(self):
         return xgb.XGBClassifier()
